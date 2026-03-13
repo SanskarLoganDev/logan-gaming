@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sequence — Arctic Shores Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #c8cee0;
+    --panel-bg: rgba(255,255,255,0.18);
+    --circle-bg: rgba(255,255,255,0.55);
+    --circle-border: rgba(0,0,0,0.75);
+    --circle-border-w: 3px;
+    --circle-size: clamp(64px, 9vw, 100px);
+    --red: #e8221a;
+    --red-glow: rgba(232,34,26,0.7);
+    --blue: #2a7de8;
+    --blue-glow: rgba(42,125,232,0.6);
+    --yellow: #e8c01a;
+    --yellow-glow: rgba(232,192,26,0.6);
+    --green: #1ae855;
+    --green-glow: rgba(26,232,85,0.6);
+    --orange: #e87a1a;
+    --orange-glow: rgba(232,122,26,0.6);
+    --text-dark: #1a1e2e;
+    --text-mid: #3a4060;
+    --accent: #e8221a;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    background: #b8c0d8;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Mixing board background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        90deg,
+        rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px,
+        transparent 1px, transparent 80px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 1px,
+        transparent 1px, transparent 60px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Faint colour tints top/bottom like the image */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg,
+      rgba(255,160,140,0.18) 0%,
+      transparent 35%,
+      transparent 65%,
+      rgba(160,180,255,0.14) 100%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+  }
+  .header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-dark);
+    letter-spacing: -0.5px;
+  }
+  .header p {
+    font-size: 11px;
+    color: var(--text-mid);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* Stats */
+  .stats {
+    display: flex;
+    gap: 12px;
+  }
+  .stat-box {
+    background: rgba(255,255,255,0.5);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 10px;
+    padding: 8px 20px;
+    text-align: center;
+    backdrop-filter: blur(6px);
+  }
+  .stat-label { font-size: 9px; color: var(--text-mid); letter-spacing: 0.12em; text-transform: uppercase; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--text-dark); }
+
+  /* Status message */
+  .status-bar {
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dark);
+    letter-spacing: 0.05em;
+    text-align: center;
+    min-width: 300px;
+    backdrop-filter: blur(6px);
+    transition: background 0.3s, color 0.3s;
+  }
+  .status-bar.watch { background: rgba(232,34,26,0.12); color: #b01010; border-color: rgba(232,34,26,0.3); }
+  .status-bar.recall { background: rgba(26,100,232,0.1); color: #1040b0; border-color: rgba(26,100,232,0.3); }
+  .status-bar.success { background: rgba(26,200,85,0.12); color: #0a7030; border-color: rgba(26,200,85,0.3); }
+  .status-bar.fail { background: rgba(232,34,26,0.15); color: #b01010; border-color: rgba(232,34,26,0.4); }
+
+  /* Board */
+  .board-wrap {
+    width: 100%;
+    background: rgba(255,255,255,0.22);
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 18px;
+    padding: 20px 16px 20px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  }
+
+  /* Timer bar */
+  .timer-bar-wrap {
+    width: 100%;
+    height: 6px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .timer-bar-fill {
+    height: 100%;
+    width: 100%;
+    background: var(--red);
+    border-radius: 3px;
+    transition: width 1s linear, background 0.5s;
+    transform-origin: left;
+  }
+  .timer-bar-fill.low { background: #e87a1a; }
+  .timer-bar-fill.critical { background: #e8221a; animation: pulse-bar 0.5s ease-in-out infinite; }
+
+  .stat-value.timer-val { font-variant-numeric: tabular-nums; }
+  .stat-value.red-val { color: var(--red); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px 10px;
+  }
+
+  .cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .circle {
+    width: var(--circle-size);
+    height: var(--circle-size);
+    border-radius: 50%;
+    background: var(--circle-bg);
+    border: var(--circle-border-w) solid var(--circle-border);
+    cursor: default;
+    position: relative;
+    transition: transform 0.08s, box-shadow 0.12s, background 0.08s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    will-change: transform;
+  }
+
+  /* Inner shine ring */
+  .circle::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55), transparent 70%);
+    pointer-events: none;
+    transition: opacity 0.1s;
+  }
+
+  /* Lit states */
+  .circle.lit-red {
+    background: var(--red);
+    border-color: #a00;
+    box-shadow: 0 0 18px var(--red-glow), 0 0 36px var(--red-glow);
+    transform: scale(1.06);
+  }
+  .circle.lit-blue {
+    background: var(--blue);
+    border-color: #1050a0;
+    box-shadow: 0 0 18px var(--blue-glow), 0 0 36px var(--blue-glow);
+    transform: scale(1.04);
+  }
+  .circle.lit-yellow {
+    background: var(--yellow);
+    border-color: #a08000;
+    box-shadow: 0 0 18px var(--yellow-glow), 0 0 36px var(--yellow-glow);
+    transform: scale(1.04);
+  }
+  .circle.lit-green {
+    background: var(--green);
+    border-color: #0a8030;
+    box-shadow: 0 0 18px var(--green-glow), 0 0 36px var(--green-glow);
+    transform: scale(1.04);
+  }
+  .circle.lit-orange {
+    background: var(--orange);
+    border-color: #a04400;
+    box-shadow: 0 0 18px var(--orange-glow), 0 0 36px var(--orange-glow);
+    transform: scale(1.04);
+  }
+
+  /* Recall mode: circles become clickable */
+  .circle.clickable {
+    cursor: pointer;
+    border-color: rgba(26,80,232,0.5);
+    background: rgba(200,210,255,0.45);
+  }
+  .circle.clickable:hover {
+    background: rgba(180,195,255,0.65);
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(80,120,255,0.3);
+  }
+
+  /* Recall: correctly clicked */
+  .circle.correct-click {
+    background: var(--red);
+    border-color: #a00;
+    box-shadow: 0 0 18px var(--red-glow);
+    transform: scale(1.06);
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* Wrong click flash */
+  .circle.wrong-flash {
+    background: #ff6060;
+    border-color: #cc0000;
+    animation: wrong-shake 0.35s ease;
+  }
+
+  .circle-label {
+    font-size: 11px;
+    color: var(--text-mid);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+
+
+
+  /* Recall progress dots */
+  .recall-progress {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    min-height: 16px;
+  }
+  .rdot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(0,0,0,0.12);
+    border: 1.5px solid rgba(0,0,0,0.2);
+    transition: background 0.15s, transform 0.15s;
+  }
+  .rdot.filled { background: var(--red); border-color: #a00; transform: scale(1.2); box-shadow: 0 0 6px var(--red-glow); }
+  .rdot.pending { background: rgba(100,140,255,0.3); border-color: rgba(80,120,255,0.5); animation: pulse-rdot 1s infinite; }
+
+  /* Start button */
+  .btn {
+    padding: 13px 40px;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 4px 16px var(--red-glow);
+  }
+  .btn:hover { background: #c41a14; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { background: rgba(0,0,0,0.18); color: rgba(0,0,0,0.35); box-shadow: none; cursor: default; }
+
+  /* Overlay */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(180,190,215,0.7);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .overlay.active { opacity: 1; pointer-events: all; }
+  .overlay-card {
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 20px;
+    padding: 36px 40px;
+    text-align: center;
+    max-width: 340px;
+    width: 90%;
+    transform: translateY(16px);
+    transition: transform 0.3s;
+  }
+  .overlay.active .overlay-card { transform: translateY(0); }
+  .ov-icon { font-size: 48px; display: block; margin-bottom: 10px; }
+  .ov-title { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; }
+  .ov-sub { font-size: 11px; color: var(--text-mid); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .ov-score { font-family: 'Syne', sans-serif; font-size: 48px; font-weight: 700; color: var(--red); margin: 4px 0 16px; }
+  .ov-detail { font-size: 12px; color: var(--text-mid); line-height: 1.7; margin-bottom: 24px; }
+
+  @keyframes pulse-bar {
+    0%,100% { opacity:1; } 50% { opacity:0.5; }
+  }
+  @keyframes wrong-shake {
+    0%,100% { transform: translateX(0) scale(1.06); }
+    25% { transform: translateX(-5px) scale(1.06); }
+    75% { transform: translateX(5px) scale(1.06); }
+  }
+  @keyframes pulse-rdot {
+    0%,100% { opacity:1; } 50% { opacity:0.4; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="header">
+    <h1>Sequence Game</h1>
+    <p>Arctic Shores Practice · Working Memory</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat-box">
+      <div class="stat-label">Round</div>
+      <div class="stat-value" id="s-round">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Correct</div>
+      <div class="stat-value" id="s-correct">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Wrong</div>
+      <div class="stat-value" id="s-wrong">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Time left</div>
+      <div class="stat-value timer-val" id="s-timer">2:00</div>
+    </div>
+  </div>
+
+  <div class="timer-bar-wrap" style="width:100%;max-width:700px;">
+    <div class="timer-bar-fill" id="timer-bar"></div>
+  </div>
+
+  <div class="status-bar" id="status">Press Start to begin</div>
+
+  <div class="board-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="recall-progress" id="recall-progress"></div>
+
+  <button class="btn" id="start-btn" onclick="startGame()">▶ Start Game</button>
+</div>
+
+<!-- Results Overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <span class="ov-icon" id="ov-icon">🧠</span>
+    <div class="ov-title" id="ov-title">Time's Up!</div>
+    <div class="ov-sub">2-minute session complete</div>
+    <div class="ov-score" id="ov-score">0</div>
+    <div style="display:flex;gap:12px;justify-content:center;margin-bottom:14px;">
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#3a4060;letter-spacing:0.12em;text-transform:uppercase;">Correct</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#1a7a40;" id="ov-correct">0</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#3a4060;letter-spacing:0.12em;text-transform:uppercase;">Wrong</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#c01010;" id="ov-wrong">0</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#3a4060;letter-spacing:0.12em;text-transform:uppercase;">Best run</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#1a1e2e;" id="ov-best">0</div>
+      </div>
+    </div>
+    <div class="ov-detail" id="ov-detail"></div>
+    <button class="btn" onclick="closeOverlay()">▶ Play Again</button>
+  </div>
+</div>
+
+<script>
+  const ROWS = 3, COLS = 5, TOTAL = ROWS * COLS;
+  const DISTRACTOR_COLORS = ['blue', 'yellow', 'green', 'orange'];
+  const FLASH_ON  = 420;
+  const FLASH_OFF = 220;
+  const GAME_DURATION = 120; // seconds
+
+  let sequence = [];
+  let round = 0;
+  let recallIndex = 0;
+  let phase = 'idle';
+  let correctCount = 0;
+  let wrongCount = 0;
+  let bestStreak = 0;
+  let currentStreak = 0;
+  let gameActive = false;
+  let timeLeft = GAME_DURATION;
+  let timerInterval = null;
+  let abortCurrentRound = false;
+
+  /* ─── Build grid ─── */
+  const grid = document.getElementById('grid');
+  for (let i = 0; i < TOTAL; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const circle = document.createElement('div');
+    circle.className = 'circle';
+    circle.id = 'c' + i;
+    circle.dataset.idx = i;
+    circle.addEventListener('click', () => handleRecallClick(i));
+    cell.appendChild(circle);
+    grid.appendChild(cell);
+  }
+
+  /* ─── Helpers ─── */
+  function sleep(ms) {
+    return new Promise(r => {
+      const t = setTimeout(r, ms);
+      // allow abort
+      const check = setInterval(() => { if (abortCurrentRound) { clearTimeout(t); clearInterval(check); r(); } }, 50);
+      setTimeout(() => clearInterval(check), ms + 100);
+    });
+  }
+
+  function setStatus(msg, cls = '') {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status-bar ' + cls;
+  }
+
+  function getCircle(idx) { return document.getElementById('c' + idx); }
+
+  function lightCircle(idx, color, ms) {
+    return new Promise(async resolve => {
+      const el = getCircle(idx);
+      el.classList.add('lit-' + color);
+      await sleep(ms);
+      el.classList.remove('lit-' + color);
+      resolve();
+    });
+  }
+
+  function getDifficulty(round) {
+    const seqLen = 2 + Math.floor((round - 1) * 0.8);
+    const distractors = Math.min(Math.floor((round - 1) * 0.6), 8);
+    const flashOn  = Math.max(200, FLASH_ON  - (round - 1) * 18);
+    const flashOff = Math.max(100, FLASH_OFF - (round - 1) * 10);
+    return { seqLen, distractors, flashOn, flashOff };
+  }
+
+  function buildWatchSequence(seqLen, distractorCount) {
+    const reds = [];
+    while (reds.length < seqLen) {
+      const idx = Math.floor(Math.random() * TOTAL);
+      if (!reds.includes(idx)) reds.push(idx);
+    }
+    const timeline = reds.map(idx => ({ idx, color: 'red' }));
+    for (let d = 0; d < distractorCount; d++) {
+      const color = DISTRACTOR_COLORS[Math.floor(Math.random() * DISTRACTOR_COLORS.length)];
+      const idx = Math.floor(Math.random() * TOTAL);
+      const pos = Math.floor(Math.random() * (timeline.length + 1));
+      timeline.splice(pos, 0, { idx, color });
+    }
+    return { timeline, reds };
+  }
+
+  /* ─── Timer ─── */
+  function startTimer() {
+    timeLeft = GAME_DURATION;
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateTimerDisplay();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        endGame();
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    const m = Math.floor(timeLeft / 60);
+    const s = timeLeft % 60;
+    document.getElementById('s-timer').textContent = m + ':' + String(s).padStart(2, '0');
+    const pct = (timeLeft / GAME_DURATION) * 100;
+    const bar = document.getElementById('timer-bar');
+    bar.style.width = pct + '%';
+    bar.className = 'timer-bar-fill' + (pct <= 15 ? ' critical' : pct <= 35 ? ' low' : '');
+    const tv = document.getElementById('s-timer');
+    tv.className = 'stat-value timer-val' + (timeLeft <= 20 ? ' red-val' : '');
+  }
+
+  function updateStats() {
+    document.getElementById('s-round').textContent = round || '—';
+    document.getElementById('s-correct').textContent = correctCount;
+    document.getElementById('s-wrong').textContent = wrongCount;
+  }
+
+  /* ─── Game flow ─── */
+  async function startGame() {
+    document.getElementById('start-btn').disabled = true;
+    sequence = [];
+    round = 0;
+    correctCount = 0;
+    wrongCount = 0;
+    bestStreak = 0;
+    currentStreak = 0;
+    gameActive = true;
+    abortCurrentRound = false;
+    document.getElementById('recall-progress').innerHTML = '';
+    updateStats();
+    startTimer();
+    await runRound();
+  }
+
+  async function runRound() {
+    if (!gameActive) return;
+    round++;
+    updateStats();
+
+    const { seqLen, distractors, flashOn, flashOff } = getDifficulty(round);
+    const { timeline, reds } = buildWatchSequence(seqLen, distractors);
+    sequence = reds;
+    abortCurrentRound = false;
+
+    phase = 'watch';
+    disableAllClicks();
+    setStatus('Watch carefully — remember the RED circles!', 'watch');
+    await sleep(600);
+    if (!gameActive) return;
+
+    for (const event of timeline) {
+      if (!gameActive) return;
+      await lightCircle(event.idx, event.color, flashOn);
+      await sleep(flashOff);
+    }
+    if (!gameActive) return;
+
+    phase = 'recall';
+    recallIndex = 0;
+    buildRecallDots();
+    enableClickableCircles();
+    setStatus(`Click the ${sequence.length} red circles in order`, 'recall');
+  }
+
+  function disableAllClicks() {
+    for (let i = 0; i < TOTAL; i++) {
+      const c = getCircle(i);
+      c.classList.remove('clickable', 'correct-click');
+    }
+  }
+
+  function enableClickableCircles() {
+    for (let i = 0; i < TOTAL; i++) {
+      const c = getCircle(i);
+      if (!c.classList.contains('correct-click')) c.classList.add('clickable');
+    }
+  }
+
+  function buildRecallDots() {
+    const track = document.getElementById('recall-progress');
+    track.innerHTML = '';
+    for (let i = 0; i < sequence.length; i++) {
+      const d = document.createElement('div');
+      d.className = 'rdot' + (i === 0 ? ' pending' : '');
+      d.id = 'rdot' + i;
+      track.appendChild(d);
+    }
+  }
+
+  function updateRecallDots() {
+    for (let i = 0; i < sequence.length; i++) {
+      const d = document.getElementById('rdot' + i);
+      if (!d) continue;
+      d.className = 'rdot' + (i < recallIndex ? ' filled' : i === recallIndex ? ' pending' : '');
+    }
+  }
+
+  async function handleRecallClick(idx) {
+    if (phase !== 'recall' || !gameActive) return;
+    const c = getCircle(idx);
+    if (!c.classList.contains('clickable')) return;
+
+    if (idx === sequence[recallIndex]) {
+      // Correct tap
+      c.classList.remove('clickable');
+      c.classList.add('correct-click');
+      recallIndex++;
+      updateRecallDots();
+
+      if (recallIndex === sequence.length) {
+        // Sequence complete!
+        phase = 'idle';
+        correctCount++;
+        currentStreak++;
+        if (currentStreak > bestStreak) bestStreak = currentStreak;
+        updateStats();
+        setStatus(`✓ Correct! +${sequence.length} remembered`, 'success');
+        disableAllClicks();
+        document.getElementById('recall-progress').innerHTML = '';
+        await sleep(700);
+        for (let i = 0; i < TOTAL; i++) getCircle(i).classList.remove('correct-click');
+        if (gameActive) await runRound();
+      }
+    } else {
+      // Wrong tap
+      wrongCount++;
+      currentStreak = 0;
+      updateStats();
+      phase = 'wrong';
+      disableAllClicks();
+      c.classList.add('wrong-flash');
+
+      setStatus('Wrong! Watch the correct sequence…', 'fail');
+      await sleep(350);
+      c.classList.remove('wrong-flash');
+      if (!gameActive) return;
+
+      // Replay correct reds quickly
+      for (const redIdx of sequence) {
+        if (!gameActive) return;
+        await lightCircle(redIdx, 'red', 320);
+        await sleep(150);
+      }
+      await sleep(400);
+      if (!gameActive) return;
+
+      // Clear board and go again
+      document.getElementById('recall-progress').innerHTML = '';
+      for (let i = 0; i < TOTAL; i++) getCircle(i).classList.remove('correct-click', 'wrong-flash');
+      await runRound();
+    }
+  }
+
+  function endGame() {
+    gameActive = false;
+    phase = 'idle';
+    disableAllClicks();
+    document.getElementById('recall-progress').innerHTML = '';
+
+    const total = correctCount + wrongCount;
+    const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+    let icon, title, detail;
+    if (accuracy >= 85 && correctCount >= 8) {
+      icon = '🧠'; title = 'Outstanding!';
+      detail = `${accuracy}% accuracy over ${total} attempts. Exceptional working memory — you filtered distractors well.`;
+    } else if (accuracy >= 70 && correctCount >= 5) {
+      icon = '🔥'; title = 'Strong session';
+      detail = `${accuracy}% accuracy over ${total} attempts. Above average. Keep focusing on ignoring the distractor colours.`;
+    } else if (accuracy >= 50) {
+      icon = '👍'; title = 'Good effort';
+      detail = `${accuracy}% accuracy over ${total} attempts. Solid base. Try to mentally say the circle positions as they flash.`;
+    } else {
+      icon = '📈'; title = 'Keep practising';
+      detail = `${accuracy}% accuracy over ${total} attempts. Focus on only tracking red — ignore all other colours completely.`;
+    }
+
+    document.getElementById('ov-icon').textContent = icon;
+    document.getElementById('ov-title').textContent = title;
+    document.getElementById('ov-score').textContent = accuracy + '%';
+    document.getElementById('ov-correct').textContent = correctCount;
+    document.getElementById('ov-wrong').textContent = wrongCount;
+    document.getElementById('ov-best').textContent = bestStreak;
+    document.getElementById('ov-detail').textContent = detail;
+    document.getElementById('overlay').classList.add('active');
+  }
+
+  function closeOverlay() {
+    document.getElementById('overlay').classList.remove('active');
+    for (let i = 0; i < TOTAL; i++) getCircle(i).className = 'circle';
+    document.getElementById('recall-progress').innerHTML = '';
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('s-round').textContent = '—';
+    document.getElementById('s-correct').textContent = '0';
+    document.getElementById('s-wrong').textContent = '0';
+    document.getElementById('s-timer').textContent = '2:00';
+    document.getElementById('timer-bar').style.width = '100%';
+    document.getElementById('timer-bar').className = 'timer-bar-fill';
+    setStatus('Press Start to begin');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Direction — Arctic Shores Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white:    #ffffff;
+    --correct:  #2ecc40;
+    --wrong:    #ff2222;
+    --skip:     #ffaa00;
+    --arrow-col:#0d1a00;
+  }
+
+  body {
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px 16px;
+    background: #5a9e10;
+    overflow: hidden; position: relative;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 30%, rgba(160,220,60,0.55) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 60% at 80% 70%, rgba(180,230,80,0.45) 0%, transparent 65%),
+      radial-gradient(ellipse 40% 40% at 60% 20%, rgba(200,240,100,0.35) 0%, transparent 60%),
+      linear-gradient(160deg, #4a8a10 0%, #6ab820 40%, #4a9010 100%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background: linear-gradient(135deg,
+      rgba(255,255,255,0.07) 0%, transparent 45%,
+      rgba(180,240,60,0.08) 55%, transparent 100%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrapper {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 680px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+  }
+
+  .header { text-align: center; }
+  .header h1 {
+    font-family: 'Black Ops One', cursive; font-size: 30px;
+    color: var(--white); letter-spacing: 2px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .header p {
+    font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.75);
+    letter-spacing: 0.15em; text-transform: uppercase; margin-top: 3px;
+  }
+
+  .stats { display: flex; gap: 10px; }
+  .stat-box {
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px; padding: 8px 18px; text-align: center;
+    backdrop-filter: blur(4px);
+  }
+  .stat-label { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.6); letter-spacing: 0.14em; text-transform: uppercase; }
+  .stat-value { font-family: 'Black Ops One', cursive; font-size: 22px; color: var(--white); margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .stat-value.green { color: var(--correct); }
+  .stat-value.red   { color: var(--wrong); }
+  .stat-value.timer.low  { color: var(--skip); }
+  .stat-value.timer.crit { color: var(--wrong); }
+
+  .timer-bar-wrap {
+    width: 100%; height: 6px; background: rgba(0,0,0,0.25);
+    border-radius: 3px; overflow: hidden;
+  }
+  .timer-bar-fill {
+    height: 100%; width: 100%; background: rgba(255,255,255,0.8);
+    border-radius: 3px; transition: width 1s linear, background 0.4s;
+  }
+  .timer-bar-fill.low  { background: var(--skip); }
+  .timer-bar-fill.crit { background: var(--wrong); animation: pulse-bar 0.5s ease-in-out infinite; }
+
+  .rule-box {
+    background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 10px; padding: 9px 20px;
+    display: flex; gap: 20px; align-items: center;
+    backdrop-filter: blur(4px); flex-wrap: wrap; justify-content: center;
+  }
+  .rule-item { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.9); }
+  .key-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.4); border-radius: 5px;
+    font-family: 'Black Ops One', cursive; font-size: 13px; color: var(--white);
+  }
+
+  .arena {
+    width: 100%; background: rgba(0,0,0,0.22);
+    border: 2px solid rgba(255,255,255,0.18); border-radius: 20px;
+    padding: 24px 20px 20px; backdrop-filter: blur(6px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px; min-height: 220px; justify-content: center;
+  }
+
+  /* Rows container — holds 3 or 5 sym-rows */
+  #rows-container {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px; width: 100%;
+  }
+  #rows-container.hidden { opacity: 0; pointer-events: none; }
+
+  .sym-row {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+
+  /* Flash entire grid on result */
+  #rows-container.flash-correct .sym { animation: flash-green 0.25s ease; }
+  #rows-container.flash-wrong   .sym { animation: flash-red   0.25s ease; }
+  #rows-container.flash-skip    .sym { animation: flash-skip  0.25s ease; }
+
+  /* Symbol cell — NO highlight on central */
+  .sym {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--arrow-col); font-weight: 900;
+    border-radius: 8px; user-select: none;
+  }
+
+  .response-bar-wrap {
+    width: 80%; height: 4px; background: rgba(255,255,255,0.15);
+    border-radius: 2px; overflow: hidden;
+  }
+  .response-bar-fill {
+    height: 100%; width: 100%; background: rgba(255,255,255,0.7);
+    border-radius: 2px; transition: none;
+  }
+
+  .status-line {
+    font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85);
+    letter-spacing: 0.06em; text-align: center; min-height: 20px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .status-line.correct { color: var(--correct); }
+  .status-line.wrong   { color: var(--wrong); }
+  .status-line.skip    { color: var(--skip); }
+
+  .idle-prompt {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); text-align: center;
+  }
+
+  .btn {
+    padding: 14px 48px; background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.55); border-radius: 12px;
+    font-family: 'Black Ops One', cursive; font-size: 16px;
+    letter-spacing: 2px; color: var(--white); cursor: pointer;
+    transition: background 0.15s, transform 0.1s; backdrop-filter: blur(4px);
+  }
+  .btn:hover { background: rgba(255,255,255,0.28); }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(30,60,0,0.75);
+    backdrop-filter: blur(8px); display: flex; align-items: center;
+    justify-content: center; z-index: 200; opacity: 0; pointer-events: none;
+    transition: opacity 0.35s;
+  }
+  .overlay.active { opacity: 1; pointer-events: all; }
+  .overlay-card {
+    background: rgba(20,40,0,0.92); border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 22px; padding: 36px 40px; text-align: center;
+    max-width: 380px; width: 92%; transform: translateY(18px);
+    transition: transform 0.35s; box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  }
+  .overlay.active .overlay-card { transform: translateY(0); }
+  .ov-icon  { font-size: 52px; display: block; margin-bottom: 10px; }
+  .ov-title { font-family: 'Black Ops One', cursive; font-size: 26px; color: var(--white); margin-bottom: 4px; letter-spacing: 1px; }
+  .ov-sub   { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.5); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  .ov-score { font-family: 'Black Ops One', cursive; font-size: 56px; color: #c8e87a; margin: 4px 0 16px; }
+  .ov-grid  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+  .ov-cell  { text-align: center; }
+  .ov-cell-label { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.45); letter-spacing: 0.12em; text-transform: uppercase; }
+  .ov-cell-val   { font-family: 'Black Ops One', cursive; font-size: 26px; margin-top: 2px; }
+  .ov-cell-val.g { color: var(--correct); }
+  .ov-cell-val.r { color: var(--wrong); }
+  .ov-cell-val.y { color: var(--skip); }
+  .ov-detail { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 22px; }
+
+  @keyframes flash-green { 0%,100%{background:transparent} 50%{background:rgba(46,204,64,0.35)} }
+  @keyframes flash-red   { 0%,100%{background:transparent} 50%{background:rgba(255,34,34,0.35)} }
+  @keyframes flash-skip  { 0%,100%{background:transparent} 50%{background:rgba(255,170,0,0.3)} }
+  @keyframes pulse-bar   { 0%,100%{opacity:1} 50%{opacity:0.45} }
+  @keyframes slide-in    { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="header">
+    <h1>DIRECTION</h1>
+    <p>Arctic Shores Practice · Focus &amp; Attention</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat-box"><div class="stat-label">Correct</div><div class="stat-value green" id="s-correct">0</div></div>
+    <div class="stat-box"><div class="stat-label">Wrong</div><div class="stat-value red" id="s-wrong">0</div></div>
+    <div class="stat-box"><div class="stat-label">Missed</div><div class="stat-value" id="s-missed" style="color:rgba(255,255,255,0.7)">0</div></div>
+    <div class="stat-box"><div class="stat-label">Time</div><div class="stat-value timer" id="s-timer">2:00</div></div>
+  </div>
+
+  <div class="timer-bar-wrap"><div class="timer-bar-fill" id="timer-bar"></div></div>
+
+  <div class="rule-box">
+    <div class="rule-item"><div class="key-badge">Q</div> Centre arrow ←</div>
+    <div class="rule-item"><div class="key-badge">P</div> Centre arrow →</div>
+    <div class="rule-item" style="color:rgba(255,255,255,0.6)">All ✕ flankers = press <strong style="color:#ffaa00">nothing</strong></div>
+  </div>
+
+  <div class="arena" id="arena">
+    <div class="idle-prompt" id="idle-prompt">
+      <span style="font-size:32px">👁</span>
+      Find the <strong style="color:#c8e87a">centre symbol of the middle row</strong><br>and press Q, P — or nothing
+    </div>
+    <div id="rows-container" class="hidden"></div>
+    <div class="response-bar-wrap" id="resp-bar-wrap" style="display:none">
+      <div class="response-bar-fill" id="resp-bar"></div>
+    </div>
+    <div class="status-line" id="status-line"></div>
+  </div>
+
+  <button class="btn" id="start-btn" onclick="startGame()">▶ START</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <span class="ov-icon" id="ov-icon">🎯</span>
+    <div class="ov-title" id="ov-title">Session Complete</div>
+    <div class="ov-sub">2-minute direction test</div>
+    <div class="ov-score" id="ov-score">0%</div>
+    <div class="ov-grid">
+      <div class="ov-cell"><div class="ov-cell-label">Correct</div><div class="ov-cell-val g" id="ov-correct">0</div></div>
+      <div class="ov-cell"><div class="ov-cell-label">Wrong</div><div class="ov-cell-val r" id="ov-wrong">0</div></div>
+      <div class="ov-cell"><div class="ov-cell-label">Missed</div><div class="ov-cell-val y" id="ov-missed">0</div></div>
+    </div>
+    <div class="ov-detail" id="ov-detail"></div>
+    <button class="btn" onclick="closeOverlay()">▶ PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+  const GAME_SECS   = 120;
+  const INIT_WINDOW = 1800;
+  const MIN_WINDOW  = 650;
+  const ARROW_L = '←', ARROW_R = '→', DASH = '—', CROSS = '✕';
+
+  let gameActive = false, accepting = false;
+  let timeLeft = GAME_SECS, timerInterval = null, promptTimer = null;
+  let correct = 0, wrong = 0, missed = 0, promptCount = 0;
+  let currentCorrectAction = null;
+
+  /* ── Build prompt ─────────────────────────────────────────────────
+     numRows: randomly 3 or 5
+     Signal row = middle row (index 1 for 3-row, index 2 for 5-row)
+     Signal symbol = middle (index 2) of the signal row
+     correctAction: 'left' | 'right' | 'none' (when all 4 flankers are ✕)
+  ──────────────────────────────────────────────────────────────────── */
+  function buildPrompt() {
+    const numRows      = Math.random() < 0.5 ? 3 : 5;
+    const midRow       = Math.floor(numRows / 2); // 1 or 2
+
+    const dir          = Math.random() < 0.5 ? 'left' : 'right';
+    const centralSym   = dir === 'left' ? ARROW_L : ARROW_R;
+
+    // Decide flanker pattern for the signal row
+    const nopeChance = 0.28;
+    let flankerType;
+    if (Math.random() < nopeChance) {
+      flankerType = 'cross';
+    } else {
+      const r = Math.random();
+      flankerType = r < 0.40 ? 'same' : r < 0.70 ? 'mixed' : 'dash';
+    }
+
+    let flankers;
+    if      (flankerType === 'cross') flankers = [CROSS,CROSS,CROSS,CROSS];
+    else if (flankerType === 'same')  flankers = [centralSym,centralSym,centralSym,centralSym];
+    else if (flankerType === 'dash')  flankers = [DASH,DASH,DASH,DASH];
+    else {
+      const opts = [ARROW_L, ARROW_R, DASH];
+      flankers = Array.from({length:4}, () => opts[Math.floor(Math.random()*opts.length)]);
+    }
+
+    const signalRow     = [flankers[0], flankers[1], centralSym, flankers[2], flankers[3]];
+    const correctAction = flankerType === 'cross' ? 'none' : dir;
+
+    // Build all rows
+    const rows = [];
+    for (let r = 0; r < numRows; r++) {
+      rows.push(r === midRow ? signalRow : buildDistractorRow());
+    }
+
+    return { rows, correctAction, numRows };
+  }
+
+  function buildDistractorRow() {
+    // Weighted random: mostly arrows & dashes, occasional crosses
+    const opts    = [ARROW_L, ARROW_R, DASH, CROSS];
+    const weights = [0.35, 0.35, 0.2, 0.1];
+    return Array.from({length:5}, () => {
+      let acc = 0, r = Math.random();
+      for (let i = 0; i < opts.length; i++) { acc += weights[i]; if (r < acc) return opts[i]; }
+      return opts[0];
+    });
+  }
+
+  /* ── Render ───────────────────────────────────────────────────── */
+  function renderRows(rows, numRows) {
+    const container = document.getElementById('rows-container');
+    container.innerHTML = '';
+    container.className = '';
+
+    // Slightly smaller symbols for 5-row display
+    const symW   = numRows === 5 ? 'clamp(42px,7vw,60px)'   : 'clamp(52px,9vw,72px)';
+    const symH   = numRows === 5 ? 'clamp(42px,7vw,60px)'   : 'clamp(52px,9vw,72px)';
+    const arrowF = numRows === 5 ? 'clamp(26px,5vw,40px)'   : 'clamp(32px,6vw,50px)';
+    const dashF  = numRows === 5 ? 'clamp(22px,4.2vw,34px)' : 'clamp(26px,5vw,42px)';
+    const crossF = numRows === 5 ? 'clamp(18px,3.5vw,28px)' : 'clamp(22px,4vw,34px)';
+
+    rows.forEach(rowSyms => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'sym-row';
+      rowSyms.forEach(sym => {
+        const cell = document.createElement('div');
+        cell.className = 'sym';
+        cell.textContent = sym;
+        cell.style.width  = symW;
+        cell.style.height = symH;
+        cell.style.fontSize =
+          sym === CROSS ? crossF : sym === DASH ? dashF : arrowF;
+        rowEl.appendChild(cell);
+      });
+      container.appendChild(rowEl);
+    });
+
+    container.style.animation = 'slide-in 0.12s ease';
+    setTimeout(() => { if (container) container.style.animation = ''; }, 160);
+  }
+
+  /* ── Run one prompt ───────────────────────────────────────────── */
+  function runPrompt() {
+    if (!gameActive) return;
+    promptCount++;
+
+    const elapsed        = GAME_SECS - timeLeft;
+    const difficulty     = Math.min(elapsed / 60, 1);
+    const responseWindow = Math.round(INIT_WINDOW - (INIT_WINDOW - MIN_WINDOW) * difficulty);
+
+    const { rows, correctAction, numRows } = buildPrompt();
+    currentCorrectAction = correctAction;
+    accepting = true;
+
+    document.getElementById('idle-prompt').style.display = 'none';
+    renderRows(rows, numRows);
+
+    // Response bar countdown
+    const barWrap = document.getElementById('resp-bar-wrap');
+    const bar     = document.getElementById('resp-bar');
+    barWrap.style.display = 'block';
+    bar.style.transition  = 'none';
+    bar.style.width       = '100%';
+    bar.getBoundingClientRect();
+    bar.style.transition  = `width ${responseWindow}ms linear`;
+    bar.style.width       = '0%';
+
+    document.getElementById('status-line').textContent = '';
+    document.getElementById('status-line').className   = 'status-line';
+
+    promptTimer = setTimeout(() => {
+      if (!accepting) return;
+      accepting = false;
+      // No press = correct when flankers were all X, otherwise missed
+      handleResult(correctAction === 'none' ? 'correct' : 'missed', correctAction);
+    }, responseWindow);
+  }
+
+  /* ── Handle result ────────────────────────────────────────────── */
+  function handleResult(outcome, correctAction) {
+    accepting = false;
+    clearTimeout(promptTimer);
+
+    // Freeze bar at current position
+    const bar     = document.getElementById('resp-bar');
+    const barWrap = document.getElementById('resp-bar-wrap');
+    const cw = bar.getBoundingClientRect().width;
+    const ww = barWrap.getBoundingClientRect().width;
+    bar.style.transition = 'none';
+    bar.style.width = (ww > 0 ? Math.round(cw / ww * 100) : 0) + '%';
+
+    const container = document.getElementById('rows-container');
+    const statusEl  = document.getElementById('status-line');
+
+    if (outcome === 'correct') {
+      correct++;
+      container.className = 'flash-correct';
+      statusEl.textContent = correctAction === 'none' ? '✓ Good — no press needed' : '✓ Correct!';
+      statusEl.className   = 'status-line correct';
+    } else if (outcome === 'wrong') {
+      wrong++;
+      container.className = 'flash-wrong';
+      statusEl.textContent = correctAction === 'none' ? '✗ Should not have pressed' : '✗ Wrong key';
+      statusEl.className   = 'status-line wrong';
+    } else {
+      missed++;
+      container.className = 'flash-skip';
+      statusEl.textContent = '— Too slow';
+      statusEl.className   = 'status-line skip';
+    }
+
+    updateStats();
+    setTimeout(() => { if (gameActive) runPrompt(); }, 340);
+  }
+
+  /* ── Keys ─────────────────────────────────────────────────────── */
+  document.addEventListener('keydown', e => {
+    if (!gameActive || !accepting) return;
+    const key = e.key.toLowerCase();
+    if (key !== 'q' && key !== 'p') return;
+    const pressed = key === 'q' ? 'left' : 'right';
+
+    if (currentCorrectAction === 'none') {
+      handleResult('wrong', 'none');
+    } else if (pressed === currentCorrectAction) {
+      handleResult('correct', currentCorrectAction);
+    } else {
+      handleResult('wrong', currentCorrectAction);
+    }
+  });
+
+  /* ── Timer ────────────────────────────────────────────────────── */
+  function startTimer() {
+    timeLeft = GAME_SECS;
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+      if (--timeLeft <= 0) { clearInterval(timerInterval); endGame(); }
+      else updateTimerDisplay();
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+    const el  = document.getElementById('s-timer');
+    const bar = document.getElementById('timer-bar');
+    el.textContent = m + ':' + String(s).padStart(2,'0');
+    const pct = timeLeft / GAME_SECS * 100;
+    const isCrit = pct <= 15, isLow = pct <= 35;
+    bar.style.width = pct + '%';
+    bar.className   = 'timer-bar-fill' + (isCrit?' crit':isLow?' low':'');
+    el.className    = 'stat-value timer' + (isCrit?' crit':isLow?' low':'');
+  }
+
+  function updateStats() {
+    document.getElementById('s-correct').textContent = correct;
+    document.getElementById('s-wrong').textContent   = wrong;
+    document.getElementById('s-missed').textContent  = missed;
+  }
+
+  /* ── Start / End ──────────────────────────────────────────────── */
+  function startGame() {
+    document.getElementById('start-btn').disabled = true;
+    gameActive = true; accepting = false;
+    promptCount = correct = wrong = missed = 0;
+    updateStats(); startTimer(); runPrompt();
+  }
+
+  function endGame() {
+    gameActive = false; accepting = false;
+    clearTimeout(promptTimer);
+    const container = document.getElementById('rows-container');
+    container.innerHTML = ''; container.className = 'hidden';
+    document.getElementById('resp-bar-wrap').style.display = 'none';
+    document.getElementById('status-line').textContent = '';
+    document.getElementById('idle-prompt').style.display = 'flex';
+
+    const total    = correct + wrong + missed;
+    const accuracy = total > 0 ? Math.round(correct / total * 100) : 0;
+
+    let icon, title, detail;
+    if (accuracy >= 90 && correct >= 30) {
+      icon='🎯'; title='Elite Focus';
+      detail=`${accuracy}% accuracy across ${total} prompts. Exceptional — you found the signal in the middle row and resisted distractors perfectly.`;
+    } else if (accuracy >= 80 && correct >= 20) {
+      icon='🔥'; title='Sharp!';
+      detail=`${accuracy}% across ${total} prompts. Strong. Watch the ✕-flanker no-press rule — that's the trickiest pattern.`;
+    } else if (accuracy >= 65) {
+      icon='👍'; title='Solid Effort';
+      detail=`${accuracy}% across ${total} prompts. Good base. Quickly identify the middle row, lock onto its centre, and react.`;
+    } else {
+      icon='📈'; title='Keep Drilling';
+      detail=`${accuracy}% across ${total} prompts. Train your eyes to find the dead centre of the grid immediately — everything else is noise.`;
+    }
+
+    document.getElementById('ov-icon').textContent    = icon;
+    document.getElementById('ov-title').textContent   = title;
+    document.getElementById('ov-score').textContent   = accuracy + '%';
+    document.getElementById('ov-correct').textContent = correct;
+    document.getElementById('ov-wrong').textContent   = wrong;
+    document.getElementById('ov-missed').textContent  = missed;
+    document.getElementById('ov-detail').textContent  = detail;
+    document.getElementById('overlay').classList.add('active');
+  }
+
+  function closeOverlay() {
+    document.getElementById('overlay').classList.remove('active');
+    document.getElementById('start-btn').disabled = false;
+    ['s-correct','s-wrong','s-missed'].forEach(id => document.getElementById(id).textContent = '0');
+    document.getElementById('s-timer').textContent   = '2:00';
+    document.getElementById('timer-bar').style.width = '100%';
+    document.getElementById('timer-bar').className   = 'timer-bar-fill';
+    document.getElementById('status-line').textContent = '';
+  }
+</script>
+</body>
+</html>
