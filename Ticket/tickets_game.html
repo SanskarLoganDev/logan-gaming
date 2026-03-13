@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tickets — Arctic Shores Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #fdf4e3;
+  --panel:   #fff8ee;
+  --border:  #e8c87a;
+  --text:    #2a1a00;
+  --muted:   #8a6a30;
+  --red:     #e03030;
+  --green:   #28a858;
+  --orange:  #e87020;
+  --ticket:  #f4c84a;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 20px 16px;
+  background: var(--bg);
+  overflow: hidden; position: relative;
+}
+
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    -45deg, transparent, transparent 28px,
+    rgba(232,184,74,0.07) 28px, rgba(232,184,74,0.07) 30px
+  );
+  pointer-events: none; z-index: 0;
+}
+
+.wrapper {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 560px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+}
+
+.header { text-align: center; }
+.header h1 {
+  font-family: 'Boogaloo', cursive; font-size: 34px; color: var(--text);
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 0 var(--ticket), 3px 3px 0 rgba(0,0,0,0.08);
+}
+.header p { font-size: 11px; color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 2px; font-weight: 700; }
+
+.stats-bar { display: flex; gap: 8px; width: 100%; }
+.stat-card {
+  flex: 1; background: var(--panel); border: 2px solid var(--border);
+  border-radius: 10px; padding: 7px 8px; text-align: center;
+}
+.stat-label { font-size: 9px; font-weight: 800; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; }
+.stat-value { font-family: 'Boogaloo', cursive; font-size: 22px; color: var(--text); }
+.stat-value.green { color: var(--green); }
+.stat-value.red   { color: var(--red); }
+.stat-value.low   { color: var(--orange); }
+.stat-value.crit  { color: var(--red); }
+
+.timer-bar-wrap { width: 100%; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.timer-bar-fill {
+  height: 100%; width: 100%; background: var(--text);
+  border-radius: 3px; transition: width 1s linear, background 0.4s;
+}
+.timer-bar-fill.low  { background: var(--orange); }
+.timer-bar-fill.crit { background: var(--red); animation: pulse-bar 0.5s ease-in-out infinite; }
+
+/* Rule card */
+.rule-card {
+  width: 100%; background: var(--ticket);
+  border: 2px solid #c8980a; border-radius: 12px;
+  padding: 10px 14px;
+  display: flex; justify-content: space-between; align-items: stretch;
+}
+.rule-half { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.rule-half:first-child { padding-right: 10px; border-right: 2px dashed rgba(0,0,0,0.15); }
+.rule-half:last-child  { padding-left: 10px; align-items: flex-end; }
+.rule-key {
+  font-family: 'Boogaloo', cursive; font-size: 16px; color: var(--text);
+  display: flex; align-items: center; gap: 6px;
+}
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; background: var(--text); color: var(--ticket);
+  border-radius: 5px; font-size: 13px; font-weight: 800;
+}
+.rule-section { display: flex; flex-direction: column; gap: 1px; }
+.rule-position { font-size: 9px; font-weight: 800; color: rgba(42,26,0,0.45); letter-spacing: 0.12em; text-transform: uppercase; }
+.rule-line { font-size: 12px; font-weight: 700; color: var(--text); }
+.rule-divider {
+  display: flex; align-items: center; justify-content: center; padding: 0 8px;
+  font-family: 'Boogaloo', cursive; font-size: 18px; color: rgba(42,26,0,0.2);
+}
+
+/* Ticket arena */
+.ticket-wrap { width: 100%; }
+.ticket {
+  background: var(--panel); border: 2.5px solid var(--border);
+  border-radius: 14px; padding: 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  box-shadow: 3px 4px 0 rgba(200,152,10,0.3);
+  min-height: 190px; justify-content: center;
+}
+.ticket.flash-correct { animation: flash-g 0.22s ease; }
+.ticket.flash-wrong   { animation: flash-r 0.22s ease; }
+.ticket.flash-skip    { animation: flash-y 0.22s ease; }
+
+/* Position badge */
+.position-badge {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 3px 12px; border-radius: 20px; align-self: flex-start;
+  border: 1.5px solid var(--border); color: var(--muted); background: var(--bg);
+}
+.position-badge.upper { border-color: #c8980a; color: #7a5800; background: #fff3c0; }
+.position-badge.lower { border-color: #5580cc; color: #1a3a88; background: #ddeeff; }
+
+/* The single box shown per prompt */
+.ticket-box {
+  width: 100%; background: #fff5dc; border: 2px solid var(--border);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  padding: 10px;
+}
+.ticket-box.lower-style { background: #eef5ff; border-color: #88aadd; }
+
+/* Idle */
+.idle-screen {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; text-align: center; padding: 10px 0;
+}
+.idle-screen .big-icon { font-size: 52px; }
+.idle-screen p { font-size: 13px; color: var(--muted); line-height: 1.9; max-width: 380px; font-weight: 600; }
+.idle-screen p strong { color: var(--text); }
+
+/* Status */
+.status-line {
+  font-family: 'Boogaloo', cursive; font-size: 15px; color: var(--muted);
+  letter-spacing: 0.06em; text-align: center; min-height: 22px;
+}
+.status-line.correct { color: var(--green); }
+.status-line.wrong   { color: var(--red); }
+.status-line.skip    { color: var(--orange); }
+
+/* Response bar */
+.resp-bar-wrap { width: 70%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.resp-bar-fill { height: 100%; width: 100%; background: var(--text); border-radius: 2px; }
+
+.btn {
+  padding: 13px 44px; background: var(--text); border: none;
+  border-radius: 12px; font-family: 'Boogaloo', cursive;
+  font-size: 17px; letter-spacing: 2px; color: var(--ticket);
+  cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+  text-transform: uppercase; box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+}
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+.btn:disabled { opacity: 0.35; cursor: default; }
+
+/* Overlay */
+.overlay {
+  position: fixed; inset: 0; background: rgba(42,26,0,0.72);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.35s;
+}
+.overlay.active { opacity: 1; pointer-events: all; }
+.ov-card {
+  background: var(--panel); border: 2.5px solid var(--border);
+  border-radius: 20px; padding: 32px 36px; text-align: center;
+  max-width: 380px; width: 92%;
+  transform: scale(0.9); transition: transform 0.35s;
+  box-shadow: 4px 5px 0 rgba(200,152,10,0.35);
+}
+.overlay.active .ov-card { transform: scale(1); }
+.ov-icon  { font-size: 52px; display: block; margin-bottom: 8px; }
+.ov-title { font-family: 'Boogaloo', cursive; font-size: 26px; color: var(--text); margin-bottom: 3px; }
+.ov-sub   { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 14px; }
+.ov-grid  { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
+.ov-cell  { text-align: center; }
+.ov-clbl  { font-size: 9px; font-weight: 800; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+.ov-cval  { font-family: 'Boogaloo', cursive; font-size: 26px; margin-top: 2px; }
+.ov-cval.g { color: var(--green); }
+.ov-cval.y { color: var(--orange); }
+.ov-cval.r { color: var(--red); }
+.ov-detail { font-size: 12px; font-weight: 600; color: var(--muted); line-height: 1.75; margin-bottom: 22px; }
+
+@keyframes flash-g   { 0%,100%{background:var(--panel)} 50%{background:rgba(40,168,88,0.2)} }
+@keyframes flash-r   { 0%,100%{background:var(--panel)} 50%{background:rgba(224,48,48,0.18)} }
+@keyframes flash-y   { 0%,100%{background:var(--panel)} 50%{background:rgba(232,112,32,0.18)} }
+@keyframes pulse-bar { 0%,100%{opacity:1} 50%{opacity:0.45} }
+@keyframes slide-in  { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <div class="header">
+    <h1>🎟 TICKETS</h1>
+    <p>Arctic Shores Practice · Dual-Rule Attention</p>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">Correct</div><div class="stat-value green" id="s-correct">0</div></div>
+    <div class="stat-card"><div class="stat-label">Wrong</div>  <div class="stat-value red"   id="s-wrong">0</div></div>
+    <div class="stat-card"><div class="stat-label">Missed</div> <div class="stat-value"       id="s-missed" style="color:var(--muted)">0</div></div>
+    <div class="stat-card"><div class="stat-label">Time</div>   <div class="stat-value timer" id="s-timer">2:00</div></div>
+  </div>
+
+  <div class="timer-bar-wrap"><div class="timer-bar-fill" id="timer-bar"></div></div>
+
+  <div class="rule-card">
+    <div class="rule-half">
+      <div class="rule-key"><div class="kbd">Q</div> Press Left</div>
+      <div class="rule-section">
+        <div class="rule-position">if top box</div>
+        <div class="rule-line">even number</div>
+      </div>
+      <div class="rule-section">
+        <div class="rule-position">if bottom box</div>
+        <div class="rule-line">round shape</div>
+      </div>
+    </div>
+    <div class="rule-divider">|</div>
+    <div class="rule-half">
+      <div class="rule-key" style="justify-content:flex-end"><div class="kbd">P</div> Press Right</div>
+      <div class="rule-section" style="align-items:flex-end">
+        <div class="rule-position">if top box</div>
+        <div class="rule-line">odd number</div>
+      </div>
+      <div class="rule-section" style="align-items:flex-end">
+        <div class="rule-position">if bottom box</div>
+        <div class="rule-line">non-round shape</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticket-wrap">
+    <div class="ticket" id="ticket">
+
+      <div class="idle-screen" id="idle-screen">
+        <div class="big-icon">🎟</div>
+        <p>
+          Each prompt shows <strong>two boxes</strong> — the shape with a number appears in <strong>one of them</strong>.<br><br>
+          Shape in the <strong>top box</strong> → use the <strong>number</strong> (even = Q, odd = P)<br>
+          Shape in the <strong>bottom box</strong> → use the <strong>shape</strong> (round = Q, non-round = P)
+        </p>
+      </div>
+
+      <div id="game-ui" style="display:none; flex-direction:column; align-items:stretch; gap:0; width:100%;">
+        <div class="ticket-box" id="box-upper" style="border-radius:10px 10px 0 0; border-bottom:none;">
+          <svg id="svg-upper" width="240" height="100"></svg>
+        </div>
+        <div style="height:2px; background:var(--border); border-left:2px solid var(--border); border-right:2px solid var(--border);"></div>
+        <div class="ticket-box" id="box-lower" style="border-radius:0 0 10px 10px; border-top:none;">
+          <svg id="svg-lower" width="240" height="100"></svg>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="resp-bar-wrap" id="resp-bar-wrap" style="display:none">
+    <div class="resp-bar-fill" id="resp-bar"></div>
+  </div>
+  <div class="status-line" id="status-line"></div>
+
+  <button class="btn" id="start-btn" onclick="startGame()">▶ START</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="ov-card">
+    <span class="ov-icon" id="ov-icon">🎟</span>
+    <div class="ov-title" id="ov-title">Time's Up!</div>
+    <div class="ov-sub">2-minute tickets test</div>
+    <div class="ov-grid">
+      <div class="ov-cell"><div class="ov-clbl">Correct</div><div class="ov-cval g" id="ov-correct">0</div></div>
+      <div class="ov-cell"><div class="ov-clbl">Wrong</div>  <div class="ov-cval r" id="ov-wrong">0</div></div>
+      <div class="ov-cell"><div class="ov-clbl">Missed</div> <div class="ov-cval y" id="ov-missed">0</div></div>
+    </div>
+    <div class="ov-detail" id="ov-detail"></div>
+    <button class="btn" onclick="closeOverlay()">▶ PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+const GAME_SECS   = 120;
+const INIT_WINDOW = 2200;
+const MIN_WINDOW  = 900;
+
+const ROUND_SHAPES    = ['circle', 'ellipse', 'oval'];
+const NONROUND_SHAPES = ['rect', 'triangle', 'diamond', 'star', 'pentagon', 'hexagon'];
+const ALL_SHAPES      = [...ROUND_SHAPES, ...NONROUND_SHAPES];
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+/* ── Draw shape with number inside ── */
+function drawShape(svgEl, shape, number, isUpper) {
+  const W = 240, H = 100, cx = W/2, cy = H/2;
+  const fill   = isUpper ? '#e8b84a' : '#bdd8ff';
+  const stroke = isUpper ? '#8a6000' : '#1a4a88';
+  const numCol = isUpper ? '#2a1a00' : '#0d2d6a';
+
+  let s = '';
+  if (shape === 'circle') {
+    s = `<circle cx="${cx}" cy="${cy}" r="38" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'ellipse') {
+    s = `<ellipse cx="${cx}" cy="${cy}" rx="70" ry="36" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'oval') {
+    s = `<ellipse cx="${cx}" cy="${cy}" rx="52" ry="36" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'rect') {
+    s = `<rect x="${cx-65}" y="${cy-32}" width="130" height="64" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'triangle') {
+    s = `<polygon points="${cx},${cy-38} ${cx-54},${cy+32} ${cx+54},${cy+32}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'diamond') {
+    s = `<polygon points="${cx},${cy-40} ${cx+56},${cy} ${cx},${cy+40} ${cx-56},${cy}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'star') {
+    s = `<polygon points="${starPts(cx,cy,40,18,5)}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'pentagon') {
+    s = `<polygon points="${polyPts(cx,cy,40,5,-90)}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  } else if (shape === 'hexagon') {
+    s = `<polygon points="${hexPts(cx,cy,40)}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+  }
+
+  svgEl.innerHTML = s
+    + `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
+        font-family="Boogaloo,cursive" font-size="32" fill="${numCol}" font-weight="700">${number}</text>`;
+}
+
+function hexPts(cx, cy, r) {
+  return Array.from({length:6}, (_,i) => {
+    const a = Math.PI/180*(60*i-30);
+    return `${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+}
+function polyPts(cx, cy, r, n, deg=0) {
+  return Array.from({length:n}, (_,i) => {
+    const a = Math.PI/180*(360/n*i+deg);
+    return `${(cx+r*Math.cos(a)).toFixed(1)},${(cy+r*Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+}
+function starPts(cx, cy, R, r, n) {
+  const p = [];
+  for (let i=0;i<n*2;i++) {
+    const rad = i%2===0?R:r, a=Math.PI/180*(360/(n*2)*i-90);
+    p.push(`${(cx+rad*Math.cos(a)).toFixed(1)},${(cy+rad*Math.sin(a)).toFixed(1)}`);
+  }
+  return p.join(' ');
+}
+
+/* ── Build prompt ── */
+function buildPrompt() {
+  const position = Math.random() < 0.5 ? 'upper' : 'lower';
+  const shape    = rand(ALL_SHAPES);
+  const number   = 1 + Math.floor(Math.random() * 9);
+
+  let correctAction;
+  if (position === 'upper') {
+    // Number rule: even → Q, odd → P
+    correctAction = number % 2 === 0 ? 'Q' : 'P';
+  } else {
+    // Shape rule: round → Q, non-round → P
+    correctAction = ROUND_SHAPES.includes(shape) ? 'Q' : 'P';
+  }
+  return { position, shape, number, correctAction };
+}
+
+/* ── State ── */
+let gameActive = false, accepting = false;
+let timeLeft = GAME_SECS, timerInterval = null, promptTimer = null;
+let correct = 0, wrong = 0, missed = 0;
+let currentCorrectAction = null;
+
+/* ── Run one prompt ── */
+function runPrompt() {
+  if (!gameActive) return;
+
+  const elapsed = GAME_SECS - timeLeft;
+  const diff    = Math.min(elapsed / 60, 1);
+  const respWin = Math.round(INIT_WINDOW - (INIT_WINDOW - MIN_WINDOW) * diff);
+
+  const { position, shape, number, correctAction } = buildPrompt();
+  currentCorrectAction = correctAction;
+  accepting = true;
+
+  document.getElementById('idle-screen').style.display = 'none';
+  document.getElementById('game-ui').style.display = 'flex';
+
+  // Draw shape+number in the chosen box, leave the other empty
+  const svgUpper = document.getElementById('svg-upper');
+  const svgLower = document.getElementById('svg-lower');
+  const boxUpper = document.getElementById('box-upper');
+  const boxLower = document.getElementById('box-lower');
+
+  if (position === 'upper') {
+    drawShape(svgUpper, shape, number, true);
+    svgLower.innerHTML = '';
+    boxUpper.style.background = '#fff5dc';
+    boxLower.style.background = '#f9f4e8';
+  } else {
+    svgUpper.innerHTML = '';
+    drawShape(svgLower, shape, number, false);
+    boxUpper.style.background = '#f9f4e8';
+    boxLower.style.background = '#eef5ff';
+  }
+
+  // Animate
+  const ticket = document.getElementById('ticket');
+  ticket.className = 'ticket';
+  void ticket.offsetWidth;
+  ticket.style.animation = 'slide-in 0.13s ease';
+  setTimeout(() => ticket.style.animation = '', 150);
+
+  // Response bar
+  const barWrap = document.getElementById('resp-bar-wrap');
+  const bar     = document.getElementById('resp-bar');
+  barWrap.style.display = 'block';
+  bar.style.transition  = 'none';
+  bar.style.width       = '100%';
+  bar.getBoundingClientRect();
+  bar.style.transition  = `width ${respWin}ms linear`;
+  bar.style.width       = '0%';
+
+  document.getElementById('status-line').textContent = '';
+  document.getElementById('status-line').className   = 'status-line';
+
+  promptTimer = setTimeout(() => {
+    if (!accepting) return;
+    accepting = false;
+    handleResult('missed');
+  }, respWin);
+}
+
+/* ── Handle result ── */
+function handleResult(outcome) {
+  accepting = false;
+  clearTimeout(promptTimer);
+
+  const bar     = document.getElementById('resp-bar');
+  const barWrap = document.getElementById('resp-bar-wrap');
+  const cw = bar.getBoundingClientRect().width;
+  const ww = barWrap.getBoundingClientRect().width;
+  bar.style.transition = 'none';
+  bar.style.width = (ww > 0 ? Math.round(cw/ww*100) : 0) + '%';
+
+  const ticket   = document.getElementById('ticket');
+  const statusEl = document.getElementById('status-line');
+
+  if (outcome === 'correct') {
+    correct++;
+    ticket.className     = 'ticket flash-correct';
+    statusEl.textContent = '✓ Correct!';
+    statusEl.className   = 'status-line correct';
+  } else if (outcome === 'wrong') {
+    wrong++;
+    ticket.className     = 'ticket flash-wrong';
+    statusEl.textContent = '✗ Wrong key';
+    statusEl.className   = 'status-line wrong';
+  } else {
+    missed++;
+    ticket.className     = 'ticket flash-skip';
+    statusEl.textContent = '— Too slow';
+    statusEl.className   = 'status-line skip';
+  }
+
+  updateStats();
+  setTimeout(() => { if (gameActive) runPrompt(); }, 350);
+}
+
+/* ── Keys ── */
+document.addEventListener('keydown', e => {
+  if (!gameActive || !accepting) return;
+  const k = e.key.toLowerCase();
+  if (k !== 'q' && k !== 'p') return;
+  e.preventDefault();
+  handleResult((k === 'q' ? 'Q' : 'P') === currentCorrectAction ? 'correct' : 'wrong');
+});
+
+/* ── Timer ── */
+function startTimer() {
+  timeLeft = GAME_SECS; updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    if (--timeLeft <= 0) { clearInterval(timerInterval); endGame(); }
+    else updateTimerDisplay();
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timeLeft/60), s = timeLeft%60;
+  const pct = timeLeft/GAME_SECS*100;
+  const isCrit = pct<=15, isLow = pct<=35;
+  document.getElementById('s-timer').textContent = `${m}:${String(s).padStart(2,'0')}`;
+  document.getElementById('s-timer').className   = 'stat-value timer'+(isCrit?' crit':isLow?' low':'');
+  document.getElementById('timer-bar').style.width = pct+'%';
+  document.getElementById('timer-bar').className   = 'timer-bar-fill'+(isCrit?' crit':isLow?' low':'');
+}
+
+function updateStats() {
+  document.getElementById('s-correct').textContent = correct;
+  document.getElementById('s-wrong').textContent   = wrong;
+  document.getElementById('s-missed').textContent  = missed;
+}
+
+/* ── Start / End ── */
+function startGame() {
+  document.getElementById('start-btn').disabled = true;
+  gameActive = true; accepting = false;
+  correct = wrong = missed = 0;
+  updateStats(); startTimer(); runPrompt();
+}
+
+function endGame() {
+  gameActive = false; accepting = false;
+  clearTimeout(promptTimer); clearInterval(timerInterval);
+  document.getElementById('game-ui').style.display     = 'none';
+  document.getElementById('idle-screen').style.display = 'flex';
+  document.getElementById('resp-bar-wrap').style.display = 'none';
+  document.getElementById('status-line').textContent   = '';
+
+  const total    = correct + wrong + missed;
+  const accuracy = total > 0 ? Math.round(correct/total*100) : 0;
+  let icon, title, detail;
+
+  if (accuracy >= 90 && correct >= 30) {
+    icon='🎯'; title='Elite!';
+    detail=`${accuracy}% across ${total} tickets. Instant rule-switching based on position — exactly what Arctic Shores is testing.`;
+  } else if (accuracy >= 80) {
+    icon='🔥'; title='Sharp!';
+    detail=`${accuracy}% across ${total} tickets. Strong performance. Always read the position badge before the image.`;
+  } else if (accuracy >= 65) {
+    icon='👍'; title='Solid!';
+    detail=`${accuracy}% across ${total} tickets. UPPER → use the number. LOWER → use the shape. Badge first, always.`;
+  } else {
+    icon='📈'; title='Keep Drilling';
+    detail=`${accuracy}% across ${total} tickets. Focus on reading the badge before anything else. Upper = number parity. Lower = shape roundness.`;
+  }
+
+  document.getElementById('ov-icon').textContent    = icon;
+  document.getElementById('ov-title').textContent   = title;
+  document.getElementById('ov-correct').textContent = correct;
+  document.getElementById('ov-wrong').textContent   = wrong;
+  document.getElementById('ov-missed').textContent  = missed;
+  document.getElementById('ov-detail').textContent  = detail;
+  document.getElementById('overlay').classList.add('active');
+}
+
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('start-btn').disabled = false;
+  ['s-correct','s-wrong','s-missed'].forEach(id => document.getElementById(id).textContent='0');
+  document.getElementById('s-timer').textContent    = '2:00';
+  document.getElementById('timer-bar').style.width  = '100%';
+  document.getElementById('timer-bar').className    = 'timer-bar-fill';
+  document.getElementById('status-line').textContent = '';
+}
+</script>
+</body>
+</html>
