@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balloon — Arctic Shores Practice</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg1: #1a0533;
+  --bg2: #0d1a3a;
+  --panel: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.12);
+  --text: #f0e8ff;
+  --muted: rgba(240,232,255,0.5);
+  --gold: #ffd84a;
+  --green: #4af098;
+  --red: #ff5a5a;
+  --pump-col: #ff6b9d;
+  --cash-col: #4af098;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 20px 16px;
+  background: var(--bg1);
+  overflow: hidden; position: relative;
+}
+
+/* Festive bokeh background */
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background:
+    radial-gradient(circle 180px at 10% 20%, rgba(255,107,157,0.18) 0%, transparent 70%),
+    radial-gradient(circle 220px at 90% 15%, rgba(74,240,152,0.14) 0%, transparent 70%),
+    radial-gradient(circle 160px at 80% 80%, rgba(255,216,74,0.16) 0%, transparent 70%),
+    radial-gradient(circle 200px at 20% 85%, rgba(138,100,255,0.18) 0%, transparent 70%),
+    radial-gradient(circle 300px at 50% 50%, rgba(30,10,70,0.5) 0%, transparent 80%),
+    linear-gradient(145deg, #1a0533 0%, #0d1a3a 50%, #1a0a30 100%);
+  pointer-events: none; z-index: 0;
+}
+
+/* Floating dots decoration */
+.dot { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; opacity: 0.18; }
+
+.wrapper {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 520px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+}
+
+/* Header */
+.header { text-align: center; }
+.header h1 {
+  font-family: 'Fredoka One', cursive;
+  font-size: 32px; color: var(--gold);
+  letter-spacing: 2px;
+  text-shadow: 0 0 30px rgba(255,216,74,0.5), 0 3px 0 rgba(0,0,0,0.3);
+}
+.header p { font-size: 11px; color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 2px; }
+
+/* Stats bar */
+.stats-bar {
+  display: flex; gap: 8px; width: 100%;
+}
+.stat-card {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px; text-align: center;
+  backdrop-filter: blur(8px);
+}
+.stat-label { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; }
+.stat-value { font-family: 'Fredoka One', cursive; font-size: 22px; color: var(--text); margin-top: 1px; }
+.stat-value.gold  { color: var(--gold); }
+.stat-value.green { color: var(--green); }
+
+/* Round dots */
+.round-dots {
+  display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;
+}
+.rdot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.rdot.win  { background: var(--green); box-shadow: 0 0 6px rgba(74,240,152,0.6); border-color: var(--green); }
+.rdot.pop  { background: var(--red);   box-shadow: 0 0 6px rgba(255,90,90,0.6);  border-color: var(--red); }
+.rdot.cur  { background: var(--gold);  box-shadow: 0 0 8px rgba(255,216,74,0.7); border-color: var(--gold); animation: blink-dot 0.8s ease-in-out infinite; }
+
+/* Arena */
+.arena {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 22px 20px 20px;
+  backdrop-filter: blur(8px);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+  min-height: 300px; justify-content: center;
+  position: relative; overflow: hidden;
+}
+
+/* Balloon type label */
+.type-badge {
+  font-family: 'Fredoka One', cursive;
+  font-size: 13px; letter-spacing: 1px;
+  padding: 3px 14px; border-radius: 20px;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  color: var(--text);
+}
+
+/* SVG balloon wrapper */
+.balloon-wrap {
+  position: relative;
+  width: 200px; height: 260px;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+#balloon-svg {
+  position: absolute; bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  transition: width 0.12s cubic-bezier(.34,1.56,.64,1),
+              height 0.12s cubic-bezier(.34,1.56,.64,1);
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4));
+}
+
+/* Pump counter inside/on balloon */
+.pump-label {
+  position: absolute; bottom: 60px; left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Fredoka One', cursive;
+  font-size: 28px; color: rgba(255,255,255,0.9);
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  pointer-events: none; z-index: 2;
+  transition: opacity 0.2s;
+}
+
+/* This round earnings */
+.round-earn {
+  font-family: 'Fredoka One', cursive;
+  font-size: 18px; color: var(--gold);
+  text-shadow: 0 0 12px rgba(255,216,74,0.4);
+  letter-spacing: 0.5px;
+}
+
+/* Idle / pop / win messages */
+.arena-msg {
+  font-family: 'Fredoka One', cursive;
+  font-size: 20px; text-align: center;
+  line-height: 1.5;
+}
+.arena-msg.pop  { color: var(--red);   text-shadow: 0 0 16px rgba(255,90,90,0.5); }
+.arena-msg.win  { color: var(--green); text-shadow: 0 0 16px rgba(74,240,152,0.5); }
+.arena-msg.idle { color: var(--muted); }
+
+/* Buttons */
+.btn-row { display: flex; gap: 10px; width: 100%; }
+.btn {
+  flex: 1; padding: 14px 10px;
+  border: none; border-radius: 14px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 17px; letter-spacing: 1px; cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s, opacity 0.2s;
+  text-transform: uppercase;
+}
+.btn:active { transform: scale(0.95); }
+.btn:disabled { opacity: 0.3; cursor: default; transform: none; }
+
+.btn-pump {
+  background: linear-gradient(145deg, #ff6b9d, #d94e7a);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(255,107,157,0.45);
+}
+.btn-pump:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(255,107,157,0.65); transform: translateY(-1px); }
+
+.btn-cash {
+  background: linear-gradient(145deg, #4af098, #28c46e);
+  color: #0d2a1a;
+  box-shadow: 0 4px 20px rgba(74,240,152,0.35);
+}
+.btn-cash:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(74,240,152,0.55); transform: translateY(-1px); }
+
+.btn-start {
+  background: linear-gradient(145deg, #ffd84a, #e8a820);
+  color: #2a1800;
+  box-shadow: 0 4px 20px rgba(255,216,74,0.45);
+  flex: 1;
+}
+.btn-start:hover:not(:disabled) { box-shadow: 0 6px 28px rgba(255,216,74,0.65); transform: translateY(-1px); }
+
+/* Idle start screen */
+.idle-screen {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 12px; text-align: center;
+}
+.idle-screen .big-icon { font-size: 56px; animation: float-icon 2.5s ease-in-out infinite; }
+.idle-screen p { font-size: 13px; color: var(--muted); line-height: 1.85; max-width: 360px; }
+.idle-screen p strong { color: var(--text); }
+
+/* Balloon type preview row */
+.type-preview {
+  display: flex; gap: 20px; align-items: flex-end; justify-content: center; margin: 4px 0;
+}
+.tp-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.tp-label { font-family: 'Fredoka One', cursive; font-size: 12px; color: var(--muted); }
+
+/* Overlay */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,5,30,0.88);
+  backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.4s;
+}
+.overlay.active { opacity: 1; pointer-events: all; }
+.ov-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 24px; padding: 34px 36px;
+  text-align: center; max-width: 380px; width: 92%;
+  transform: scale(0.9); transition: transform 0.4s;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.overlay.active .ov-card { transform: scale(1); }
+.ov-icon  { font-size: 58px; display: block; margin-bottom: 8px; }
+.ov-title { font-family: 'Fredoka One', cursive; font-size: 28px; color: var(--gold); margin-bottom: 4px; }
+.ov-sub   { font-size: 11px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 16px; }
+.ov-grid  { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 18px; }
+.ov-cell  { text-align: center; }
+.ov-clbl  { font-size: 9px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+.ov-cval  { font-family: 'Fredoka One', cursive; font-size: 26px; margin-top: 2px; }
+.ov-cval.g { color: var(--green); } .ov-cval.y { color: var(--gold); } .ov-cval.r { color: var(--red); }
+.ov-detail { font-size: 12px; color: var(--muted); line-height: 1.8; margin-bottom: 22px; }
+
+@keyframes float-icon { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+@keyframes blink-dot  { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes pop-burst  {
+  0%   { transform: translateX(-50%) scale(1); opacity: 1; }
+  40%  { transform: translateX(-50%) scale(1.6); opacity: 0.6; }
+  100% { transform: translateX(-50%) scale(0.1); opacity: 0; }
+}
+@keyframes bounce-pump {
+  0%   { transform: translateX(-50%) scale(1); }
+  40%  { transform: translateX(-50%) scale(1.04); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+</style>
+</head>
+<body>
+
+<!-- Decorative dots -->
+<div class="dot" style="width:120px;height:120px;background:#ff6b9d;top:5%;left:3%;"></div>
+<div class="dot" style="width:80px;height:80px;background:#4af098;top:8%;right:6%;"></div>
+<div class="dot" style="width:100px;height:100px;background:#ffd84a;bottom:10%;left:8%;"></div>
+<div class="dot" style="width:140px;height:140px;background:#8a64ff;bottom:6%;right:4%;"></div>
+
+<div class="wrapper">
+  <div class="header">
+    <h1>🎈 BALLOON</h1>
+    <p>Arctic Shores Practice · Risk &amp; Reward</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Round</div>
+      <div class="stat-value" id="s-round">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">This round</div>
+      <div class="stat-value gold" id="s-current">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Banked total</div>
+      <div class="stat-value green" id="s-banked">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pumps</div>
+      <div class="stat-value" id="s-pumps">0</div>
+    </div>
+  </div>
+
+  <!-- Round progress dots -->
+  <div class="round-dots" id="round-dots"></div>
+
+  <!-- Arena -->
+  <div class="arena" id="arena">
+    <!-- Idle -->
+    <div class="idle-screen" id="idle-screen">
+      <div class="big-icon">🎈</div>
+      <p>
+        Pump the balloon to earn points — <strong>10 pts per pump</strong>.<br>
+        But pump too much and it <strong>pops</strong> — you lose the round.<br>
+        <strong>Cash out</strong> anytime to bank your earnings safely.<br><br>
+        Each balloon has a <strong>random burst point</strong> — you never know when it'll pop.
+      </p>
+      <div class="type-preview" id="type-preview"></div>
+    </div>
+
+    <!-- Active game -->
+    <div id="game-ui" style="display:none; flex-direction:column; align-items:center; gap:12px; width:100%;">
+      <div class="type-badge" id="type-badge">Normal</div>
+
+      <div class="balloon-wrap">
+        <svg id="balloon-svg" xmlns="http://www.w3.org/2000/svg" width="100" height="140">
+          <!-- Balloon body (ellipse shaped by type) -->
+          <defs>
+            <radialGradient id="bgrad" cx="35%" cy="30%" r="65%">
+              <stop offset="0%"   stop-color="rgba(255,255,255,0.55)"/>
+              <stop offset="45%"  stop-color="rgba(255,255,255,0.10)"/>
+              <stop offset="100%" stop-color="rgba(0,0,0,0.15)"/>
+            </radialGradient>
+          </defs>
+          <ellipse id="bell" cx="50" cy="62" rx="40" ry="52" fill="#4af098"/>
+          <ellipse id="bell-shine" cx="50" cy="62" rx="40" ry="52" fill="url(#bgrad)"/>
+          <!-- Knot -->
+          <ellipse id="bknot" cx="50" cy="114" rx="5" ry="4" fill="#3acc78"/>
+          <!-- String -->
+          <line id="bstring" x1="50" y1="118" x2="50" y2="140" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+        </svg>
+        <div class="pump-label" id="pump-label">0</div>
+      </div>
+
+      <div class="arena-msg" id="arena-msg" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-row" id="btn-row">
+    <button class="btn btn-start" id="start-btn" onclick="startGame()">▶ START GAME</button>
+  </div>
+</div>
+
+<!-- Results overlay -->
+<div class="overlay" id="overlay">
+  <div class="ov-card">
+    <span class="ov-icon" id="ov-icon">🎈</span>
+    <div class="ov-title" id="ov-title">DONE!</div>
+    <div class="ov-sub"  id="ov-sub">20 rounds complete</div>
+    <div class="ov-grid">
+      <div class="ov-cell"><div class="ov-clbl">Total banked</div><div class="ov-cval y" id="ov-banked">0</div></div>
+      <div class="ov-cell"><div class="ov-clbl">Cashed out</div>  <div class="ov-cval g" id="ov-cashed">0</div></div>
+      <div class="ov-cell"><div class="ov-clbl">Popped</div>      <div class="ov-cval r" id="ov-popped">0</div></div>
+    </div>
+    <div class="ov-detail" id="ov-detail"></div>
+    <button class="btn btn-start" onclick="closeOverlay()">▶ PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+/* ── Config ── */
+const TOTAL_ROUNDS = 20;
+const PTS_PER_PUMP = 10;
+
+// Balloon types: shape only — burst capacity is assigned randomly per round, not tied to type
+const TYPES = [
+  { id:'normal', label:'Normal', rx:1.00, ry:1.30, color:'#4af098' },
+  { id:'broad',  label:'Broad',  rx:1.55, ry:0.80, color:'#ff6b9d' },
+  { id:'long',   label:'Long',   rx:0.68, ry:1.65, color:'#ffd84a' },
+];
+// All balloons draw from the same burst range — no clues from shape
+const BURST_MIN = 5, BURST_MAX = 30;
+
+// Burst capacities assigned ONCE per game — fixed per type, same all game
+// Player discovers them through play and can exploit that knowledge
+let burstMap = {};  // { normal: N, broad: N, long: N }
+
+function assignBurstMap() {
+  // Each type gets a unique random value from the range (no duplicates)
+  const pool = Array.from({length: BURST_MAX - BURST_MIN + 1}, (_,i) => i + BURST_MIN);
+  // Shuffle and pick 3
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  burstMap = {
+    normal: pool[0],
+    broad:  pool[1],
+    long:   pool[2],
+  };
+}
+
+/* ── State ── */
+let roundNum    = 0;   // 1-based current round
+let pumps       = 0;   // pumps this round
+let burstAt     = 0;   // hidden burst threshold
+let banked      = 0;   // total banked pts
+let roundEarns  = 0;   // this round pending pts
+let roundType   = null;
+let roundActive = false;
+let roundResults= [];  // 'win'|'pop' per round
+let cashedRounds= 0, poppedRounds = 0;
+let gameStarted = false;
+
+/* ── Build type preview (idle screen) ── */
+function buildTypePreview() {
+  const wrap = document.getElementById('type-preview');
+  wrap.innerHTML = '';
+  TYPES.forEach(t => {
+    const baseW = 44, baseH = 58;
+    const w = Math.round(baseW * t.rx), h = Math.round(baseH * t.ry);
+    wrap.innerHTML += `
+      <div class="tp-item">
+        <svg width="${w+4}" height="${h+14}" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="${(w+4)/2}" cy="${h/2+2}" rx="${w/2}" ry="${h/2}" fill="${t.color}" opacity="0.85"/>
+          <line x1="${(w+4)/2}" y1="${h+2}" x2="${(w+4)/2}" y2="${h+14}" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+        </svg>
+        <div class="tp-label">${t.label}</div>
+      </div>`;
+  });
+}
+
+/* ── Build round dots ── */
+function buildDots() {
+  const row = document.getElementById('round-dots');
+  row.innerHTML = '';
+  for (let i = 0; i < TOTAL_ROUNDS; i++) {
+    const d = document.createElement('div');
+    d.className = 'rdot' + (i < roundResults.length
+      ? (roundResults[i]==='win' ? ' win' : ' pop')
+      : i === roundNum-1 ? ' cur' : '');
+    d.id = 'rd'+i;
+    row.appendChild(d);
+  }
+}
+
+function updateDots() {
+  for (let i = 0; i < TOTAL_ROUNDS; i++) {
+    const d = document.getElementById('rd'+i);
+    if (!d) continue;
+    if (i < roundResults.length) {
+      d.className = 'rdot ' + (roundResults[i]==='win' ? 'win' : 'pop');
+    } else if (i === roundNum-1) {
+      d.className = 'rdot cur';
+    } else {
+      d.className = 'rdot';
+    }
+  }
+}
+
+/* ── Balloon SVG geometry ── */
+// Base dimensions scale with pump count
+// Each type has a different shape (rx:ry ratio)
+function balloonDims(type, pumps) {
+  const BASE_AREA = 1800;          // starting ellipse area (π·rx·ry)
+  const GROWTH    = 180;           // area added per pump
+  const area      = BASE_AREA + pumps * GROWTH;
+  // area = π·rx·ry → rx·ry = area/π
+  const product   = area / Math.PI;
+  // rx = ry * aspectRatio
+  const aspectX   = type.rx, aspectY = type.ry;
+  // ry² * (aspectX/aspectY) = product → ry = sqrt(product*aspectY/aspectX)
+  const ry        = Math.sqrt(product * aspectY / aspectX);
+  const rx        = ry * (aspectX / aspectY);
+  return { rx: Math.round(rx), ry: Math.round(ry) };
+}
+
+function updateBalloonSVG(type, pumps) {
+  const { rx, ry } = balloonDims(type, pumps);
+  const svgW = rx*2 + 10, svgH = ry*2 + 24;
+  const cx = svgW/2, cy = ry + 4;
+  const knot_y = cy + ry + 1;
+  const svg = document.getElementById('balloon-svg');
+  svg.setAttribute('width', svgW);
+  svg.setAttribute('height', svgH);
+  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+
+  document.getElementById('bell').setAttribute('cx', cx);
+  document.getElementById('bell').setAttribute('cy', cy);
+  document.getElementById('bell').setAttribute('rx', rx);
+  document.getElementById('bell').setAttribute('ry', ry);
+  document.getElementById('bell').setAttribute('fill', type.color);
+
+  document.getElementById('bell-shine').setAttribute('cx', cx);
+  document.getElementById('bell-shine').setAttribute('cy', cy);
+  document.getElementById('bell-shine').setAttribute('rx', rx);
+  document.getElementById('bell-shine').setAttribute('ry', ry);
+
+  document.getElementById('bknot').setAttribute('cx', cx);
+  document.getElementById('bknot').setAttribute('cy', knot_y + 2);
+  document.getElementById('bknot').setAttribute('fill', darken(type.color));
+
+  document.getElementById('bstring').setAttribute('x1', cx);
+  document.getElementById('bstring').setAttribute('y1', knot_y + 5);
+  document.getElementById('bstring').setAttribute('x2', cx);
+  document.getElementById('bstring').setAttribute('y2', svgH);
+
+  // Bounce animation on pump
+  svg.style.animation = '';
+  void svg.offsetWidth;
+  svg.style.animation = 'bounce-pump 0.18s ease';
+}
+
+function darken(hex) {
+  // Slightly darken a hex for the knot
+  const n = parseInt(hex.slice(1),16);
+  const r = Math.max(0,(n>>16)-40), g=Math.max(0,((n>>8)&0xff)-40), b=Math.max(0,(n&0xff)-40);
+  return `rgb(${r},${g},${b})`;
+}
+
+/* ── Stats UI ── */
+function updateStats() {
+  document.getElementById('s-round').textContent   = roundNum + '/' + TOTAL_ROUNDS;
+  document.getElementById('s-current').textContent = roundEarns;
+  document.getElementById('s-banked').textContent  = banked;
+  document.getElementById('s-pumps').textContent   = pumps;
+  document.getElementById('pump-label').textContent = pumps;
+}
+
+/* ── Start game ── */
+function startGame() {
+  document.getElementById('start-btn').style.display = 'none';
+  document.getElementById('idle-screen').style.display = 'none';
+  const gui = document.getElementById('game-ui');
+  gui.style.display = 'flex';
+
+  roundNum = 0; banked = 0; roundResults = []; cashedRounds = 0; poppedRounds = 0;
+  gameStarted = true;
+  assignBurstMap();
+  buildDots();
+  updateStats();
+  nextRound();
+}
+
+function nextRound() {
+  if (roundNum >= TOTAL_ROUNDS) { endGame(); return; }
+  roundNum++;
+  pumps = 0; roundEarns = 0; roundActive = true;
+
+  // Pick random balloon type — shape is cosmetic only, gives no capacity clue
+  roundType = TYPES[Math.floor(Math.random() * TYPES.length)];
+  // Burst point is FIXED per type for this game — same every time this type appears
+  burstAt = burstMap[roundType.id];
+
+  // Badge
+  const badge = document.getElementById('type-badge');
+  badge.textContent = roundType.label;
+  badge.style.background = roundType.color + '22';
+  badge.style.borderColor = roundType.color + '66';
+  badge.style.color = roundType.color;
+
+  // Reset balloon
+  updateBalloonSVG(roundType, 0);
+  document.getElementById('balloon-svg').style.opacity = '1';
+  document.getElementById('balloon-svg').style.animation = '';
+  document.getElementById('pump-label').style.opacity = '1';
+  document.getElementById('arena-msg').style.display = 'none';
+  updateDots();
+  updateStats();
+
+  // Show pump + cash buttons
+  document.getElementById('btn-row').innerHTML = `
+    <button class="btn btn-pump" id="pump-btn" onclick="doPump()">🎈 PUMP</button>
+    <button class="btn btn-cash" id="cash-btn" onclick="doCash()">💰 CASH OUT</button>`;
+}
+
+/* ── Pump ── */
+function doPump() {
+  if (!roundActive) return;
+  pumps++;
+  roundEarns = pumps * PTS_PER_PUMP;
+  updateBalloonSVG(roundType, pumps);
+  updateStats();
+
+  // Check burst
+  if (pumps >= burstAt) {
+    doPop();
+  }
+}
+
+/* ── Pop ── */
+function doPop() {
+  roundActive = false;
+  poppedRounds++;
+  roundResults.push('pop');
+
+  // Burst animation
+  const svg = document.getElementById('balloon-svg');
+  svg.style.animation = 'pop-burst 0.35s ease forwards';
+  document.getElementById('pump-label').style.opacity = '0';
+
+  setTimeout(() => {
+    const msg = document.getElementById('arena-msg');
+    msg.className = 'arena-msg pop';
+    msg.innerHTML = '💥 POP! <br><span style="font-size:14px;color:rgba(255,90,90,0.8)">Lost ' + roundEarns + ' pts</span>';
+    msg.style.display = 'block';
+    updateDots();
+    updateStats();
+    showNextBtn();
+  }, 380);
+}
+
+/* ── Cash out ── */
+function doCash() {
+  if (!roundActive || pumps === 0) return;
+  roundActive = false;
+  cashedRounds++;
+  banked += roundEarns;
+  roundResults.push('win');
+
+  const svg = document.getElementById('balloon-svg');
+  svg.style.animation = 'bounce-pump 0.3s ease';
+
+  const msg = document.getElementById('arena-msg');
+  msg.className = 'arena-msg win';
+  msg.innerHTML = '💰 Banked! <br><span style="font-size:14px;color:rgba(74,240,152,0.8)">+' + roundEarns + ' pts</span>';
+  msg.style.display = 'block';
+
+  updateDots();
+  updateStats();
+  showNextBtn();
+}
+
+function showNextBtn() {
+  const isLast = roundNum >= TOTAL_ROUNDS;
+  document.getElementById('btn-row').innerHTML = isLast
+    ? `<button class="btn btn-start" onclick="endGame()">📊 SEE RESULTS</button>`
+    : `<button class="btn btn-start" onclick="nextRound()">▶ NEXT BALLOON</button>`;
+}
+
+/* ── End game ── */
+function endGame() {
+  const totalPossible = TOTAL_ROUNDS * 15 * PTS_PER_PUMP; // rough
+  const pct = cashedRounds / TOTAL_ROUNDS;
+  const avgBanked = banked / (cashedRounds || 1);
+
+  let icon, title, detail;
+  if (poppedRounds === 0) {
+    icon='🎯'; title='ULTRA SAFE';
+    detail='You cashed out every balloon — zero pops. Very risk-averse. In the real test, this can indicate caution-seeking behaviour. Try pumping a bit more each round.';
+  } else if (poppedRounds <= 4 && banked >= TOTAL_ROUNDS * 80) {
+    icon='🏆'; title='OPTIMAL!';
+    detail=`${banked} pts banked with only ${poppedRounds} pops. Excellent calibration — you pushed each balloon close to its limit without over-inflating.`;
+  } else if (poppedRounds >= TOTAL_ROUNDS * 0.6) {
+    icon='💥'; title='HIGH RISK!';
+    detail=`${poppedRounds}/${TOTAL_ROUNDS} balloons popped. You pushed hard — that's bold. The real test measures whether you can calibrate risk, not just avoid it.`;
+  } else {
+    icon='👍'; title='BALANCED';
+    detail=`${banked} pts banked · ${cashedRounds} saved · ${poppedRounds} popped. Solid. The key insight: optimal BART play means pumping more on each balloon, up to the point it stops being profitable.`;
+  }
+
+  document.getElementById('ov-icon').textContent    = icon;
+  document.getElementById('ov-title').textContent   = title;
+  document.getElementById('ov-sub').textContent     = TOTAL_ROUNDS + ' rounds complete';
+  document.getElementById('ov-banked').textContent  = banked;
+  document.getElementById('ov-cashed').textContent  = cashedRounds;
+  document.getElementById('ov-popped').textContent  = poppedRounds;
+  document.getElementById('ov-detail').textContent  = detail;
+  document.getElementById('overlay').classList.add('active');
+}
+
+/* ── Restart ── */
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('idle-screen').style.display = 'flex';
+  document.getElementById('game-ui').style.display = 'none';
+  document.getElementById('btn-row').innerHTML = `<button class="btn btn-start" id="start-btn" onclick="startGame()">▶ START GAME</button>`;
+  gameStarted = false;
+  roundResults = [];
+  buildDots();
+  document.getElementById('s-round').textContent   = '—';
+  document.getElementById('s-current').textContent = '0';
+  document.getElementById('s-banked').textContent  = '0';
+  document.getElementById('s-pumps').textContent   = '0';
+}
+
+/* ── Keyboard: Space = pump, Enter = cash out ── */
+document.addEventListener('keydown', e => {
+  if (!roundActive) return;
+  if (e.code === 'Space')  { e.preventDefault(); doPump(); }
+  if (e.code === 'Enter')  { e.preventDefault(); doCash(); }
+});
+
+/* ── Init ── */
+buildTypePreview();
+buildDots();
+</script>
+</body>
+</html>
